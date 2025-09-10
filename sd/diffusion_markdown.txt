@@ -1,0 +1,54 @@
+                ┌───────────────────┐
+                │   Latent (VAE)    │
+                │  (batch,4,H/8,W/8)│
+                └─────────┬─────────┘
+                          │
+                          ▼
+                ┌───────────────────┐
+                │  Time (1,320)     │
+                │                   │
+                └─────────┬─────────┘
+                          │
+                          ▼
+                ┌───────────────────┐
+                │ TimeEmbedding      │
+                │ (maps → (1,1280)) │
+                └─────────┬─────────┘
+                          │
+                          ▼
+                ┌─────────────────────────────────┐
+                │             UNET                 │
+                │---------------------------------│
+                │  Encoders:                      │
+                │    • Conv + ResidualBlocks      │
+                │    • SelfAttention + CrossAttn  │
+                │    • Downsampling (reduce H,W)  │
+                │---------------------------------│
+                │  Bottleneck:                    │
+                │    • ResidualBlocks + Attn      │
+                │---------------------------------│
+                │  Decoders:                      │
+                │    • ResidualBlocks             │
+                │    • Self/Cross Attention       │
+                │    • Upsample (increase H,W)    │
+                │---------------------------------│
+                │ Skip Connections:               │
+                │    • Encoder features injected  │
+                │      into Decoder at matching   │
+                │      resolution                 │
+                └─────────┬───────────────────────┘
+                          │
+                          ▼
+                ┌───────────────────┐
+                │ UNET_OutputLayer  │
+                │ GroupNorm + Conv  │
+                │ → (batch,4,H/8,W/8)│
+                └─────────┬─────────┘
+                          │
+                          ▼
+                ┌───────────────────┐
+                │   Predicted Noise │
+                │   (same shape as  │
+                │   input latent)   │
+                └───────────────────┘
+

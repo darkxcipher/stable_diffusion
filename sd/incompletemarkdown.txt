@@ -1,0 +1,99 @@
+                           TEXT PROMPT
+                                │
+                                ▼
+                        +----------------+
+                        |      clip      |
+                        |----------------|
+                        | clip embedding |
+                        | clip layers    |
+                        | self-attention |
+                        | + mlp          |
+                        +----------------+
+                                │
+                                ▼
+                      text embeddings (B,77,768)
+                                │
+                                ▼
+        ==================================================
+        ||          **DDPM PIPELINE (NOT CODED)**        ||
+        ||   - timestep loop                             ||
+        ||   - noise scheduler                           ||
+        ==================================================
+                                │
+                                ▼
+   IMAGE INPUT (B,3,H,W) ───────┐
+                                │
+                                ▼
+                        +----------------+
+                        |  vae_encoder   |
+                        |----------------|
+                        | conv (3→128)   |
+                        | vae_residual   |
+                        | vae_residual   |
+                        | ↓ downsample   |
+                        | vae_residual   |
+                        | vae_residual   |
+                        | ↓ downsample   |
+                        | vae_residual   |
+                        | vae_residual   |
+                        | ↓ downsample   |
+                        | vae_residual   |
+                        | vae_residual   |
+                        | vae_residual   |
+                        | vae_attention  |
+                        | vae_residual   |
+                        | groupnorm      |
+                        | silu           |
+                        | conv (512→8)   |
+                        | reparam trick  |
+                        +----------------+
+                                │
+                                ▼
+                       latents (B,4,H/8,W/8)
+                                │
+                                ▼
+        ==================================================
+        ||           unet diffusion model (NOT CODED)    ||
+        ||-----------------------------------------------||
+        || INPUT: latents + text embeddings + timestep   ||
+        ||                                               ||
+        || encoder path (downsampling):                  ||
+        ||   conv → resblock → (self+cross attention)    ||
+        ||   ↓                                           ||
+        ||   resblock → (self+cross attention)           ||
+        ||   ↓                                           ||
+        ||   conv(stride=2) → deeper feature maps        ||
+        ||   ...                                         ||
+        ||                                               ||
+        || bottleneck:                                   ||
+        ||   resblock → self-attention → cross-attention ||
+        ||                                               ||
+        || decoder path (upsampling + skip connections): ||
+        ||   resblock ← skip from encoder                ||
+        ||   cross-attention                             ||
+        ||   upsample (×2)                               ||
+        ||   ...                                         ||
+        || OUTPUT: denoised latents (B,4,H/8,W/8)        ||
+        ==================================================
+                                │
+                                ▼
+                        +----------------+
+                        |  vae_decoder   |
+                        |----------------|
+                        | conv (4→512)   |
+                        | vae_residual   |
+                        | vae_attention  |
+                        | vae_residual×N |
+                        | ↓ upsample     |
+                        | vae_residual×N |
+                        | ↓ upsample     |
+                        | vae_residual×N |
+                        | ↓ upsample     |
+                        | vae_residual×N |
+                        | groupnorm+silu |
+                        | conv (128→3)   |
+                        +----------------+
+                                │
+                                ▼
+                      RECONSTRUCTED IMAGE (B,3,H,W)
+
