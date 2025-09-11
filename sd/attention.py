@@ -28,7 +28,7 @@ class SelfAttention(nn.Module):
             q,
             k,
             v,
-        ) = self.in_proj(x).chunks(3, dim=-1)
+        ) = self.in_proj(x).chunk(3, dim=-1)
 
         # (batch_size, seq_len, Dim) -> (batch_size, seq_len, H, Dim/H) -> (Batch_size, H, seq_len, Dim/H)
         q = q.view(intermim_shape).transpose(1, 2)
@@ -41,7 +41,8 @@ class SelfAttention(nn.Module):
         if causal_mask:
             # mask where the upper triange above the upper diagonal is ones
             mask = torch.ones_like(weight)
-            weight.masked_fill_(mask, -torch.inf)
+            # weight.masked_fill_(mask, -torch.inf)
+            weight.masked_fill_(mask.to(torch.bool), -torch.inf)
 
         # Scale and softmax
         weight /= math.sqrt(self.d_head)

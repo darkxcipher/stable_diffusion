@@ -67,5 +67,5 @@ class CLIP(nn.Module):
             state = layer(state)
 
         # (batch_size, seq_len, Dim)
-        output = self.layernorm(state)
+        output = self.layernorms(state)
         return output

@@ -28,6 +28,7 @@ print(f"Using device: {DEVICE}")
 tokenizer = CLIPTokenizer("../data/vocab.json", merges_file="../data/merges.txt")
 
 model_file = "../data/v1-5-pruned-emaonly.ckpt"
+# Load models normally, no FP16
 models = model_loader.preload_models_from_standard_weights(model_file, DEVICE)
 
 # ----------------------------

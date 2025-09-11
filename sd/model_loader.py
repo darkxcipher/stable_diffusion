@@ -3,12 +3,13 @@ from diffusion import Diffusion
 from encoder import VAE_Encoder
 from clip import CLIP
 import model_converter
+import torch
 
 
-def load_weights_safely(model, checkpoint_dict):
+def load_weights_safely(model: torch.nn.Module, checkpoint_dict: dict):
     """
-    Load weights from checkpoint_dict into model.
-    - Only loads layers that exist in model and match in shape.
+    Load weights safely from checkpoint_dict into model.
+    - Only loads layers that exist in the model and match in shape.
     - Skips missing or shape-mismatched layers.
     """
     filtered_state_dict = {}
@@ -27,29 +28,39 @@ def load_weights_safely(model, checkpoint_dict):
     return model
 
 
-def preload_models_from_standard_weights(ckpt_path, device):
+def preload_models_from_standard_weights(
+    ckpt_path: str, device: str = "cuda", dtype=torch.float32
+):
     """
-    Load VAE encoder, decoder, diffusion model, and CLIP from standard checkpoint.
-    Handles missing/shape-mismatched layers automatically.
+    Load VAE encoder, decoder, diffusion model, and CLIP.
+    dtype can be torch.float32 (default) or torch.float16 for FP16.
     """
-    state_dict = model_converter.load_from_standard_weights(ckpt_path, device)
+    print(f"Loading checkpoint: {ckpt_path} on device: {device}")
+    state_dict = model_converter.load_from_standard_weights(ckpt_path, device="cpu")
 
     # -------------------- ENCODER --------------------
-    encoder = VAE_Encoder().to(device)
+    encoder = VAE_Encoder()  # load on CPU first
     encoder = load_weights_safely(encoder, state_dict["encoder"])
 
     # -------------------- DECODER --------------------
-    decoder = VAE_Decoder().to(device)
+    decoder = VAE_Decoder()
     decoder = load_weights_safely(decoder, state_dict["decoder"])
 
     # -------------------- DIFFUSION --------------------
-    diffusion = Diffusion().to(device)
+    diffusion = Diffusion()
     diffusion = load_weights_safely(diffusion, state_dict["diffusion"])
 
     # -------------------- CLIP --------------------
-    clip = CLIP().to(device)
+    clip = CLIP()
     clip = load_weights_safely(clip, state_dict["clip"])
 
+    # -------------------- MOVE TO DEVICE --------------------
+    encoder.to(device, dtype=dtype)
+    decoder.to(device, dtype=dtype)
+    diffusion.to(device, dtype=dtype)
+    clip.to(device, dtype=dtype)
+
+    print(f"All models loaded successfully in {dtype}.")
     return {
         "clip": clip,
         "encoder": encoder,

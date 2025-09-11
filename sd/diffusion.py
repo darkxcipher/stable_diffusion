@@ -144,13 +144,11 @@ class Upsample(nn.Module):
 
 
 class SwitchSequential(nn.Sequential):
-    def forward(
-        self, latent: torch.Tensor, context: torch.Tensor, time: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, x, context, time):
         for layer in self:
             if isinstance(layer, UNET_AttentionBlock):
                 # UNET_AttentionBlock calculates cross attention b/w latent x and prompts from context
-                x = latent
+                # x = latent
                 x = layer(x, context)
             elif isinstance(layer, UNET_ResidualBlock):
                 x = layer(x, time)
@@ -260,6 +258,25 @@ class UNET(nn.Module):
                 ),
             ]
         )
+
+    def forward(self, x, context, time):
+        # x: (Batch_Size, 4, Height / 8, Width / 8)
+        # context: (Batch_Size, Seq_Len, Dim)
+        # time: (1, 1280)
+
+        skip_connections = []
+        for layers in self.encoders:
+            x = layers(x, context, time)
+            skip_connections.append(x)
+
+        x = self.bottleneck(x, context, time)
+
+        for layers in self.decoders:
+            # Since we always concat with the skip connection of the encoder, the number of features increases before being sent to the decoder's layer
+            x = torch.cat((x, skip_connections.pop()), dim=1)
+            x = layers(x, context, time)
+
+        return x
 
 
 class UNET_OutputLayer(nn.Module):
