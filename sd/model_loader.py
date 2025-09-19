@@ -12,6 +12,15 @@ def load_weights_safely(model: torch.nn.Module, checkpoint_dict: dict):
     - Only loads layers that exist in the model and match in shape.
     - Skips missing or shape-mismatched layers.
     """
+
+    """
+    Load checkpoint and return the model's state_dict.
+    Handles:
+      - Lightning checkpoints with 'state_dict' or 'model_state_dict'
+      - Raw tensor dict (pruned weights)
+    """
+    # ckpt = torch.load(input_file, map_location=device, weights_only=False)
+
     filtered_state_dict = {}
     for k, v in checkpoint_dict.items():
         if k in model.state_dict():
@@ -55,10 +64,17 @@ def preload_models_from_standard_weights(
     clip = load_weights_safely(clip, state_dict["clip"])
 
     # -------------------- MOVE TO DEVICE --------------------
-    encoder.to(device, dtype=dtype)
-    decoder.to(device, dtype=dtype)
-    diffusion.to(device, dtype=dtype)
-    clip.to(device, dtype=dtype)
+    # -------------------- MOVE TO DEVICE --------------------
+    # Keep heavy parts on CPU if GPU memory is tight
+    encoder.to("cpu")  # CPU
+    decoder.to("cpu")  # CPU
+    diffusion.to(device, dtype=dtype)  # GPU
+    clip.to("cpu")  # CPU
+
+    # encoder.to(device, dtype=dtype)
+    # decoder.to(device, dtype=dtype)
+    # diffusion.to(device, dtype=dtype)
+    # clip.to(device, dtype=dtype)
 
     print(f"All models loaded successfully in {dtype}.")
     return {

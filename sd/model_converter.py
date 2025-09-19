@@ -3,9 +3,26 @@ import torch
 
 def load_from_standard_weights(input_file: str, device: str) -> dict[str, torch.Tensor]:
     # Taken from: https://github.com/kjsman/stable-diffusion-pytorch/issues/7#issuecomment-1426839447
-    original_model = torch.load(input_file, map_location=device, weights_only=False)[
-        "state_dict"
-    ]
+    """
+    Load checkpoint and return the model's state_dict.
+    Handles:
+      - Lightning checkpoints with 'state_dict' or 'model_state_dict'
+      - Raw tensor dict (pruned weights)
+    """
+    ckpt = torch.load(input_file, map_location=device, weights_only=False)
+
+    # Detect the correct key
+    if "state_dict" in ckpt:
+        original_model = ckpt["state_dict"]
+    elif "model_state_dict" in ckpt:
+        original_model = ckpt["model_state_dict"]
+    else:
+        # Already raw tensor dict
+        original_model = ckpt
+
+    # original_model = torch.load(input_file, map_location=device, weights_only=False)[
+    #    "state_dict"
+    # ]
 
     converted = {}
     converted["diffusion"] = {}
